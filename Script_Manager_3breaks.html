@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Script & Midjourney Prompts</title>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f8f9fa;
+      color: #222;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      background: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      border-bottom: 1px solid #ddd;
+      z-index: 20;
+    }
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    .reset {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .reset:hover {
+      background: #c82333;
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+      background: #fff;
+      position: sticky;
+      top: 50px;
+      z-index: 10;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .tab.active {
+      border-bottom: 3px solid #007bff;
+      font-weight: 600;
+      background: #f0f3ff;
+    }
+    .content {
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
+    }
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      resize: none;
+      font-family: inherit;
+      font-size: 14px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+      overflow: hidden;
+      transition: height 0.1s ease-out;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: #007bff;
+      background: #fff;
+    }
+    button, input[type='number'] {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      font-family: inherit;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #f3f3f3;
+    }
+    .chapter-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    .wordcount {
+      font-size: 12px;
+      color: #666;
+      text-align: right;
+    }
+  
+    /* Combined textarea: allow manual vertical resize and scrolling */
+    #combinedText {
+      resize: vertical !important;
+      overflow: auto !important;
+      min-height: 100px;
+      height: 200px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Script Manager</h1>
+    <button class="reset" id="resetAll">Reset All</button>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="outline">Outline</div>
+    <div class="tab" data-tab="script">Script</div>
+    <div class="tab" data-tab="combined">Combined Script</div>
+    <div class="tab" data-tab="midjourney">Midjourney Prompts</div>
+  </div>
+
+  <div id="outline" class="content tab-content" style="display:block">
+    <h3>Outline</h3>
+    <textarea id="outlineText" placeholder="Write your outline here..."></textarea>
+  </div>
+
+  <div id="script" class="content tab-content" style="display:none">
+    <h3>Script</h3>
+    <div class="chapter-controls">
+      <label>Chapters:</label>
+      <button id="decreaseChapters">−</button>
+      <input type="number" id="chapterCount" value="1" min="0" style="width:60px;text-align:center;" />
+      <button id="increaseChapters">+</button>
+    </div>
+    <div id="scriptChapters"></div>
+  </div>
+
+  <div id="combined" class="content tab-content" style="display:none">
+    <h3>Combined Script</h3>
+    <div id="combinedWordCount" class="wordcount"></div>
+    <textarea id="combinedText" readonly></textarea>
+  </div>
+
+  <div id="midjourney" class="content tab-content" style="display:none">
+    <h3>Midjourney Prompts</h3>
+    <div id="midjourneyChapters"></div>
+  </div>
+
+  <script>
+    const tabs = document.querySelectorAll('.tab');
+    const contents = document.querySelectorAll('.tab-content');
+    const scriptChapters = document.getElementById('scriptChapters');
+    const midjourneyChapters = document.getElementById('midjourneyChapters');
+    const combinedText = document.getElementById('combinedText');
+    const combinedWordCount = document.getElementById('combinedWordCount');
+    const chapterCountInput = document.getElementById('chapterCount');
+
+    function autoExpand(el) {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+
+    function getWordCount(text) {
+      return text.trim() ? text.trim().split(/\s+/).length : 0;
+    }
+
+function createChapter(type, index, savedValue = '') {
+  const div = document.createElement('div');
+  const label = document.createElement('label');
+  label.textContent = `${type} Chapter ${index}`;
+  const textarea = document.createElement('textarea');
+  textarea.value = savedValue;
+
+  const wordCountEl = document.createElement('div');
+  wordCountEl.className = 'wordcount';
+  wordCountEl.textContent = `${getWordCount(textarea.value)} words`;
+
+  textarea.addEventListener('input', () => {
+    autoExpand(textarea);
+    wordCountEl.textContent = `${getWordCount(textarea.value)} words`;
+    saveData();
+    updateCombined();
+  });
+
+  textarea.addEventListener('focus', () => autoExpand(textarea));
+  autoExpand(textarea);
+
+  div.appendChild(label);
+  div.appendChild(textarea);
+  div.appendChild(wordCountEl);
+
+  return div;
+}
+
+    function renderChapters() {
+      const count = parseInt(chapterCountInput.value) || 0;
+      scriptChapters.innerHTML = '';
+      midjourneyChapters.innerHTML = '';
+      for (let i = 0; i <= count; i++) {
+        const scriptValue = localStorage.getItem(`script_${i}`) || '';
+        const mjValue = localStorage.getItem(`mj_${i}`) || '';
+        scriptChapters.appendChild(createChapter('Script', i, scriptValue));
+        midjourneyChapters.appendChild(createChapter('Midjourney', i, mjValue));
+      }
+      updateCombined();
+      
+    }
+
+    function updateCombined() {
+      const count = parseInt(chapterCountInput.value) || 0;
+      let combined = '';
+      for (let i = 0; i <= count; i++) {
+        const text = localStorage.getItem(`script_${i}`) || '';
+        combined += text.replace(/([^\n])\n([^\n])/g, '$1\n\n$2') + '\n\n\n\n';
+      }
+      combinedText.value = combined.trim();
+      
+      combinedWordCount.textContent = `${getWordCount(combinedText.value)} words total`;
+    }
+
+    function saveData() {
+      document.querySelectorAll('#scriptChapters textarea').forEach((ta, i) => {
+        localStorage.setItem(`script_${i}`, ta.value);
+      });
+      document.querySelectorAll('#midjourneyChapters textarea').forEach((ta, i) => {
+        localStorage.setItem(`mj_${i}`, ta.value);
+      });
+      localStorage.setItem('chapterCount', chapterCountInput.value);
+      localStorage.setItem('outline', document.getElementById('outlineText').value);
+    }
+
+    document.getElementById('outlineText').addEventListener('input', saveData);
+
+    chapterCountInput.addEventListener('input', () => {
+      saveData();
+      renderChapters();
+    });
+
+    document.getElementById('increaseChapters').addEventListener('click', () => {
+      chapterCountInput.value = parseInt(chapterCountInput.value) + 1;
+      saveData();
+      renderChapters();
+    });
+
+    document.getElementById('decreaseChapters').addEventListener('click', () => {
+      const val = parseInt(chapterCountInput.value);
+      if (val > 0) chapterCountInput.value = val - 1;
+      saveData();
+      renderChapters();
+    });
+
+    document.getElementById('resetAll').addEventListener('click', () => {
+      if (confirm('Are you sure you want to reset all data?')) {
+        localStorage.clear();
+        location.reload();
+      }
+    });
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        contents.forEach(c => c.style.display = 'none');
+        document.getElementById(tab.dataset.tab).style.display = 'block';
+      });
+    });
+
+    window.addEventListener('load', () => {
+      const savedCount = localStorage.getItem('chapterCount') || 1;
+      chapterCountInput.value = savedCount;
+      document.getElementById('outlineText').value = localStorage.getItem('outline') || '';
+      renderChapters();
+    });
+  </script>
+</body>
+</html>
