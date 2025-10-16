@@ -114,12 +114,25 @@
       min-height: 100px;
       height: 200px;
     }
-  </style>
+  
+    .export, .import {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .export:hover, .import:hover {
+      background: #0056b3;
+    }
+    </style>
+    
 </head>
 <body>
   <header>
     <h1>Script Manager</h1>
-    <button class="reset" id="resetAll">Reset All</button>
+    <div style="display:flex;gap:8px;align-items:center;"><button class="export" id="exportData">Export Data</button><button class="import" id="importData">Import Data</button><button class="reset" id="resetAll">Reset All</button></div>
   </header>
 
   <div class="tabs">
@@ -281,6 +294,45 @@ function createChapter(type, index, savedValue = '') {
       document.getElementById('outlineText').value = localStorage.getItem('outline') || '';
       renderChapters();
     });
-  </script>
+  
+// Export data as JSON file
+document.getElementById('exportData').addEventListener('click', () => {
+  const data = { ...localStorage };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'script_manager_data.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// Import data from JSON file
+document.getElementById('importData').addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        Object.keys(data).forEach(key => localStorage.setItem(key, data[key]));
+        alert('Data imported successfully! Reloading...');
+        location.reload();
+      } catch (err) {
+        alert('Invalid JSON file.');
+      }
+    };
+    reader.readAsText(file);
+  });
+  input.click();
+});
+
+</script>
 </body>
 </html>
