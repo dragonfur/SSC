@@ -67,7 +67,7 @@
     textarea {
       width: 100%;
       min-height: 100px;
-      resize: none;
+      resize: vertical;
       font-family: inherit;
       font-size: 14px;
       padding: 10px;
@@ -75,7 +75,7 @@
       border-radius: 6px;
       margin-bottom: 10px;
       box-sizing: border-box;
-      overflow: hidden;
+      overflow-y: auto;
       transition: height 0.1s ease-out;
     }
     textarea:focus {
@@ -126,13 +126,16 @@
     .export:hover, .import:hover {
       background: #0056b3;
     }
-    </style>
-    
+  </style>
 </head>
 <body>
   <header>
     <h1>Script Manager</h1>
-    <div style="display:flex;gap:8px;align-items:center;"><button class="export" id="exportData">Export Data</button><button class="import" id="importData">Import Data</button><button class="reset" id="resetAll">Reset All</button></div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="export" id="exportData">Export Data</button>
+      <button class="import" id="importData">Import Data</button>
+      <button class="reset" id="resetAll">Reset All</button>
+    </div>
   </header>
 
   <div class="tabs">
@@ -177,6 +180,7 @@
     const combinedText = document.getElementById('combinedText');
     const combinedWordCount = document.getElementById('combinedWordCount');
     const chapterCountInput = document.getElementById('chapterCount');
+    const outlineText = document.getElementById('outlineText');
 
     function autoExpand(el) {
       el.style.height = 'auto';
@@ -187,33 +191,33 @@
       return text.trim() ? text.trim().split(/\s+/).length : 0;
     }
 
-function createChapter(type, index, savedValue = '') {
-  const div = document.createElement('div');
-  const label = document.createElement('label');
-  label.textContent = `${type} Chapter ${index}`;
-  const textarea = document.createElement('textarea');
-  textarea.value = savedValue;
+    function createChapter(type, index, savedValue = '') {
+      const div = document.createElement('div');
+      const label = document.createElement('label');
+      label.textContent = `${type} Chapter ${index}`;
+      const textarea = document.createElement('textarea');
+      textarea.value = savedValue;
 
-  const wordCountEl = document.createElement('div');
-  wordCountEl.className = 'wordcount';
-  wordCountEl.textContent = `${getWordCount(textarea.value)} words`;
+      const wordCountEl = document.createElement('div');
+      wordCountEl.className = 'wordcount';
+      wordCountEl.textContent = `${getWordCount(textarea.value)} words`;
 
-  textarea.addEventListener('input', () => {
-    autoExpand(textarea);
-    wordCountEl.textContent = `${getWordCount(textarea.value)} words`;
-    saveData();
-    updateCombined();
-  });
+      textarea.addEventListener('input', () => {
+        autoExpand(textarea);
+        wordCountEl.textContent = `${getWordCount(textarea.value)} words`;
+        saveData();
+        updateCombined();
+      });
 
-  textarea.addEventListener('focus', () => autoExpand(textarea));
-  autoExpand(textarea);
+      textarea.addEventListener('focus', () => autoExpand(textarea));
+      autoExpand(textarea);
 
-  div.appendChild(label);
-  div.appendChild(textarea);
-  div.appendChild(wordCountEl);
+      div.appendChild(label);
+      div.appendChild(textarea);
+      div.appendChild(wordCountEl);
 
-  return div;
-}
+      return div;
+    }
 
     function renderChapters() {
       const count = parseInt(chapterCountInput.value) || 0;
@@ -226,7 +230,6 @@ function createChapter(type, index, savedValue = '') {
         midjourneyChapters.appendChild(createChapter('Midjourney', i, mjValue));
       }
       updateCombined();
-      
     }
 
     function updateCombined() {
@@ -237,7 +240,6 @@ function createChapter(type, index, savedValue = '') {
         combined += text.replace(/([^\n])\n([^\n])/g, '$1\n\n$2') + '\n\n\n\n';
       }
       combinedText.value = combined.trim();
-      
       combinedWordCount.textContent = `${getWordCount(combinedText.value)} words total`;
     }
 
@@ -249,10 +251,15 @@ function createChapter(type, index, savedValue = '') {
         localStorage.setItem(`mj_${i}`, ta.value);
       });
       localStorage.setItem('chapterCount', chapterCountInput.value);
-      localStorage.setItem('outline', document.getElementById('outlineText').value);
+      localStorage.setItem('outline', outlineText.value);
     }
 
-    document.getElementById('outlineText').addEventListener('input', saveData);
+    // Outline textarea auto-expand and save
+    outlineText.addEventListener('input', () => {
+      autoExpand(outlineText);
+      saveData();
+    });
+    outlineText.addEventListener('focus', () => autoExpand(outlineText));
 
     chapterCountInput.addEventListener('input', () => {
       saveData();
@@ -291,48 +298,48 @@ function createChapter(type, index, savedValue = '') {
     window.addEventListener('load', () => {
       const savedCount = localStorage.getItem('chapterCount') || 1;
       chapterCountInput.value = savedCount;
-      document.getElementById('outlineText').value = localStorage.getItem('outline') || '';
+      outlineText.value = localStorage.getItem('outline') || '';
+      autoExpand(outlineText);
       renderChapters();
     });
   
-// Export data as JSON file
-document.getElementById('exportData').addEventListener('click', () => {
-  const data = { ...localStorage };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'script_manager_data.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-});
+    // Export data as JSON file
+    document.getElementById('exportData').addEventListener('click', () => {
+      const data = { ...localStorage };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'script_manager_data.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
 
-// Import data from JSON file
-document.getElementById('importData').addEventListener('click', () => {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json';
-  input.addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target.result);
-        Object.keys(data).forEach(key => localStorage.setItem(key, data[key]));
-        alert('Data imported successfully! Reloading...');
-        location.reload();
-      } catch (err) {
-        alert('Invalid JSON file.');
-      }
-    };
-    reader.readAsText(file);
-  });
-  input.click();
-});
-
-</script>
+    // Import data from JSON file
+    document.getElementById('importData').addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = JSON.parse(e.target.result);
+            Object.keys(data).forEach(key => localStorage.setItem(key, data[key]));
+            alert('Data imported successfully! Reloading...');
+            location.reload();
+          } catch (err) {
+            alert('Invalid JSON file.');
+          }
+        };
+        reader.readAsText(file);
+      });
+      input.click();
+    });
+  </script>
 </body>
 </html>
